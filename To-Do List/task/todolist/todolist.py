@@ -39,13 +39,22 @@ def tasks_printing(day=datetime.today()):
             number += 1
     print('\n')
 
+def all_tasks():
+    rows = session.query(Table).order_by(Table.deadline).all()
+    number = 1
+    for row in rows:
+        print(f"{number}. {row}. {row.deadline.strftime('%d %b')}")
+        number += 1
+    return rows
 
 while True:
     choice = input("""
 1) Today's tasks
 2) Week's tasks
 3) All tasks
-4) Add task
+4) Missed tasks
+5) Add task
+6) Delete task
 0) Exit
     """)
     Session = sessionmaker(bind=engine)
@@ -64,12 +73,21 @@ while True:
 
     elif choice == '3':
         print("All tasks:")
-        rows = session.query(Table).order_by(Table.deadline).all()
-        number = 1
-        for row in rows:
-            print(f"{number}. {row}. {row.deadline.strftime('%d %b')}")
+        all_tasks()
+
 
     elif choice == '4':
+        rows = session.query(Table).filter(Table.deadline < today.date()).order_by(Table.deadline).all()
+        print("Missed tasks:")
+        if len(rows) == 0:
+            print("Nothing is missed!")
+        else:
+            number = 1
+            for row in rows:
+                print(f"{number}. {row}. {row.deadline.strftime('%d %b')}")
+                number += 1
+
+    elif choice == '5':
         new_task = input("Enter task")
         task_deadline = input("Enter deadline")
         new_row = Table(task=new_task,
@@ -77,6 +95,15 @@ while True:
         session.add(new_row)
         session.commit()
         print("The task has been added!")
+
+    elif choice == '6':
+        rows = all_tasks()
+        task_choice = input("Choose the number of the task you want to delete:")
+        session.query(Table).filter(Table.task == rows[int(task_choice) - 1].task).delete()
+        session.commit()
+        print("The task has been deleted!")
+
+
 
     elif choice == '0':
         print("Bye!")
