@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Date
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import sessionmaker
 import sys
 
@@ -19,37 +19,65 @@ class Table(Base):
     deadline = Column(Date, default=datetime.today())
 
     def __repr__(self):
-        return f'{self.id}. {self.task}'
+        return f'{self.task}'
 
 Base.metadata.create_all(engine)
+
+def tasks_printing(day=datetime.today()):
+    """
+    Распечатывает все задачи нужного дня
+    """
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    rows = session.query(Table).filter(Table.deadline == day.date()).all()
+    if len(rows) == 0:
+        print("Nothing to do!")
+    else:
+        number = 1
+        for row in rows:
+            print(f"{number}. {row}")
+            number += 1
+    print('\n')
+
 
 while True:
     choice = input("""
 1) Today's tasks
-2) Add task
+2) Week's tasks
+3) All tasks
+4) Add task
 0) Exit
     """)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    today = datetime.today()
+
     if choice == '1':
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        rows = session.query(Table).all()
-        if len(rows) == 0:
-            print("""
-Today:
-Nothing to do!""")
-        else:
-            print("Today")
-            for row in rows:
-                print(row)
+        print(f"Today {today.day} {today.strftime('%b')}")
+        tasks_printing(today)
+
     elif choice == '2':
-        Session = sessionmaker(bind=engine)
-        session = Session()
+        for i in range(7):
+            day = today + timedelta(days=i)
+            print(day.strftime("%A %d %b"))
+            tasks_printing(day)
+
+    elif choice == '3':
+        print("All tasks:")
+        rows = session.query(Table).order_by(Table.deadline).all()
+        number = 1
+        for row in rows:
+            print(f"{number}. {row}. {row.deadline.strftime('%d %b')}")
+
+    elif choice == '4':
         new_task = input("Enter task")
+        task_deadline = input("Enter deadline")
         new_row = Table(task=new_task,
-                        deadline=datetime.strptime('07-31-2020', '%m-%d-%Y').date())
+                        deadline=datetime.strptime(task_deadline, '%Y-%m-%d').date())
         session.add(new_row)
         session.commit()
         print("The task has been added!")
+
     elif choice == '0':
         print("Bye!")
         sys.exit()
